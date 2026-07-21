@@ -1,0 +1,1 @@
+addRing -nets {VDD VSS} -follow core -stacked_via_top_layer metal10 -stacked_via_bottom_layer metal1 -layer {bottom metal10 top metal10 right metal9 left metal9} -width 2.5 -spacing 2 -offset 3

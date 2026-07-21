@@ -1,0 +1,90 @@
+## Place and Route Complete Flow
+
+1. Loading the verilog netlist and adding the library (LEF) file and SDC file for delay constraint.
+   # loading the design
+   set init_lef_file {../../../0_FreePDK45/LEF/NangateOpenCellLibrary.lef}
+   set init_gnd_net VSS
+   set init_pwr_net VDD
+   set init_verilog ../gate/systolic_array_serial_p_8.v
+   set init_top_cell SystolicArray_serial
+   set init_mmmc_file Default.view
+   init_design
+
+   # Version:1.0 MMMC View Definition File
+   # Do Not Remove Above Line
+   create_library_set -name typical -timing {../../../0_FreePDK45/CCS/NangateOpenCellLibrary_typical_ccs.lib}
+   create_constraint_mode -name myconstraints -sdc_files {../gate/systolic_array_serial_p_8.sdc}
+   create_delay_corner -name default -library_set {typical}
+   create_analysis_view -name ana1 -constraint_mode {myconstraints} -delay_corner {default}
+   set_analysis_view -setup {ana1} -hold {ana1}
+
+2. Floorplanning
+   setting the plan to 70% utilization depending on the design requirements.
+   Adding the width for core to left, core to right, core to top, core to bottom.
+   
+   ## Floorplan 70% utilization
+   floorPlan  -r 1 0.7 15.0 15.0 15.0 15.0
+
+3. Adding rings and Adding stripes
+   ## Add rings
+   addRing -nets {VDD VSS} -follow core -stacked_via_top_layer metal10 -stacked_via_bottom_layer metal1 \ 
+   -layer {bottom metal10 top metal10 right metal9 left metal9} -width 2.5 -spacing 2 -offset 3
+
+   ## Add stripes 
+   addStripe -nets {VDD VSS} -layer metal9 -direction vertical -width 2.5 -spacing 2 -set_to_set_distance 50 \
+   -stacked_via_top_layer metal10 -stacked_via_bottom_layer metal1
+
+   addStripe -nets {VDD VSS} -layer metal10 -direction horizontal -width 2.5 -spacing 2 -set_to_set_distance 50 \
+   -stacked_via_top_layer metal10 -stacked_via_bottom_layer metal1
+
+4. Adding VDD and VSS globalconnect
+   globalNetConnect VDD -type pgpin -pin VDD -all
+   globalNetConnect VSS -type pgpin -pin VSS -all
+
+5. Special routing
+   sroute -connect { blockPin padPin padRing corePin floatingStripe } -layerChangeRange { metal1 metal10 } \
+   -blockPinTarget { nearestTarget } -padPinPortConnect { allPort oneGeom } -checkAlignedSecondaryPin 1 \
+   -blockPin useLef -allowJogging 1 -crossoverViaLayerRange { metal1 metal10 } -nets { VDD VSS }
+
+6. assigning pins
+   source pin_assignment.tcl
+  
+7. Placement of standard cells
+   setPlaceMode -placeIOPins 1
+   placeDesign -noPrePlaceOpt  
+   
+8. Pre CTS optimization 
+   optDesign -preCTS
+   
+9. Clock Tree Synthesis
+   source cts.tcl
+   
+10.Post CTS optimization
+   optDesign -postCTS
+   
+11.Routing the design
+   routeDesign -globalDetail
+
+12.Adding Filler cells to prevent holes
+   setFillerMode -add_fillers_with_drc false 
+   addFiller -cell FILLCELL_X8 FILLCELL_X4 FILLCELL_X2 FILLCELL_X1 -prefix FILLER -fixDRC
+
+13.Verification
+   verify_drc -limit 100000  -report reports/systolic_array.drc
+   verify_connectivity -report reports/systolic_array.connect
+
+14.Power Analysis
+   set_power_analysis_mode -method dynamic
+   read_activity_file -format VCD -scope tb / dut activity.vcd
+   report_power -hierarchy all
+   report_power -outfile ./reports/systolic_array_power_report.rpt
+
+
+set_power_analysis_mode -method dynamic -reset
+
+read_activity_file -reset
+read_activity_file -format VCD -scope tb_pe_grid/systolic_array ../do_sim/tb_pe_grid.vcd
+
+set_power_analysis_mode -method dynamic
+
+report_power

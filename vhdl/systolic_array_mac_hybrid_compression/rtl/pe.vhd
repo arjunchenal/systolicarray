@@ -1,0 +1,165 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity pe is
+    generic (
+        ROWS        : positive := 4;
+        group_size  : positive := 16;
+        DATA_WIDTH  : positive := 8;
+        NO_OF_MAC   : positive := 2;
+        INPUT_DATA_RADIX : positive := 4   
+    );
+    port (
+        clk           : in  std_logic;
+        rst           : in  std_logic;
+        en            : in  std_logic;
+        load_w        : in  std_logic;
+        w_in          : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+        x_in          : in  std_logic_vector(group_size*INPUT_DATA_RADIX-1 downto 0);
+        y_in          : in  std_logic_vector(NO_OF_MAC*INPUT_DATA_RADIX-1 downto 0);
+        x_out         : out std_logic_vector(group_size*INPUT_DATA_RADIX-1 downto 0);
+        y_out         : out std_logic_vector(NO_OF_MAC*INPUT_DATA_RADIX-1 downto 0);
+        en_out        : out std_logic;
+        lut           : in  std_logic_vector(DATA_WIDTH-1 downto 0);
+        mac_valid_out : out std_logic_vector(NO_OF_MAC-1 downto 0)
+    );
+end entity pe;
+
+architecture rtl of pe is
+
+    constant TIMER_WIDTH : positive := 3; 
+
+    signal mac_run_timer_reg       : unsigned(TIMER_WIDTH-1 downto 0);
+    signal lut_reg                 : std_logic_vector(DATA_WIDTH-1 downto 0);
+    signal x_out_reg               : std_logic_vector(group_size*INPUT_DATA_RADIX-1 downto 0);
+    signal en_reg                  : std_logic;
+    signal load_w_reg              : std_logic;
+
+    signal mac_x_in_reg            : std_logic_vector(NO_OF_MAC*INPUT_DATA_RADIX-1 downto 0);
+    signal mac_new_input_start_reg : std_logic_vector(NO_OF_MAC-1 downto 0);
+    signal mac_en_in_reg           : std_logic_vector(NO_OF_MAC-1 downto 0);
+
+    signal next_lut_reg                 : std_logic_vector(DATA_WIDTH-1 downto 0);
+    signal next_x_out_reg               : std_logic_vector(group_size*INPUT_DATA_RADIX-1 downto 0);
+    signal next_mac_run_timer_reg       : unsigned(TIMER_WIDTH-1 downto 0);
+    signal next_mac_x_in_reg            : std_logic_vector(NO_OF_MAC*INPUT_DATA_RADIX-1 downto 0);
+    signal next_mac_new_input_start_reg : std_logic_vector(NO_OF_MAC-1 downto 0);
+    signal next_mac_en_in_reg           : std_logic_vector(NO_OF_MAC-1 downto 0);
+
+    signal mac_y_internal : std_logic_vector(NO_OF_MAC*INPUT_DATA_RADIX-1 downto 0);
+
+begin
+
+    x_out         <= x_out_reg;
+    y_out         <= mac_y_internal;
+    mac_valid_out <= mac_en_in_reg;
+    en_out        <= en_reg;
+
+
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                lut_reg                 <= (others => '0');
+                x_out_reg               <= (others => '0');
+                mac_run_timer_reg       <= (others => '0');
+                en_reg                  <= '0';
+                load_w_reg              <= '0';
+                mac_x_in_reg            <= (others => '0');
+                mac_new_input_start_reg <= (others => '0');
+                mac_en_in_reg           <= (others => '0');
+            else
+                load_w_reg              <= load_w;
+                lut_reg                 <= next_lut_reg;
+                x_out_reg               <= next_x_out_reg;
+                mac_run_timer_reg       <= next_mac_run_timer_reg;
+                en_reg                  <= en;
+                mac_x_in_reg            <= next_mac_x_in_reg;
+                mac_new_input_start_reg <= next_mac_new_input_start_reg;
+                mac_en_in_reg           <= next_mac_en_in_reg;
+            end if;
+        end if;
+    end process;
+
+
+    process(all)
+        variable selected_lane_id   : integer;
+        variable active_input_chunk : std_logic_vector(INPUT_DATA_RADIX-1 downto 0);
+        variable mac_idx            : integer;
+        variable chunk_idx          : integer;
+    begin
+        next_lut_reg                 <= lut_reg;
+        next_x_out_reg               <= x_out_reg;
+        next_mac_run_timer_reg       <= mac_run_timer_reg;
+        next_mac_x_in_reg            <= (others => '0');
+        next_mac_en_in_reg           <= (others => '0');
+        next_mac_new_input_start_reg <= (others => '0');
+
+        next_x_out_reg <= x_in;
+
+        if load_w_reg = '1' then
+            next_lut_reg <= lut;
+        end if;
+
+        if en = '1' then
+            next_mac_en_in_reg <= (others => '1');
+
+            selected_lane_id := to_integer(unsigned(lut_reg));
+            active_input_chunk := (others => '0');
+
+            if selected_lane_id < group_size then
+                for b in 0 to INPUT_DATA_RADIX-1 loop
+                    active_input_chunk(b) := x_in(selected_lane_id * INPUT_DATA_RADIX + b);
+                end loop;
+            end if;
+
+
+            mac_idx   := to_integer(mac_run_timer_reg(TIMER_WIDTH-1 downto 1));
+            chunk_idx := to_integer(mac_run_timer_reg(0 downto 0));
+
+            for i in 0 to NO_OF_MAC-1 loop
+                if i = mac_idx then
+                    for b in 0 to INPUT_DATA_RADIX-1 loop
+                        next_mac_x_in_reg(i * INPUT_DATA_RADIX + b) <= active_input_chunk(b);
+                    end loop;
+
+                    if chunk_idx = 0 then
+                        next_mac_new_input_start_reg(i) <= '1';
+                    else
+                        next_mac_new_input_start_reg(i) <= '0';
+                    end if;
+                else
+                    for b in 0 to INPUT_DATA_RADIX-1 loop
+                        next_mac_x_in_reg(i * INPUT_DATA_RADIX + b) <= '0';
+                    end loop;
+                    next_mac_new_input_start_reg(i) <= '0';
+                end if;
+            end loop;
+
+            next_mac_run_timer_reg <= mac_run_timer_reg + 1;
+        end if;
+    end process;
+
+    gen_mac : for i in 0 to NO_OF_MAC-1 generate
+        hybrid_mac : entity work.macunit_hybrid
+            generic map(
+                DATA_WIDTH  => DATA_WIDTH,
+                INPUT_DATA_RADIX => INPUT_DATA_RADIX
+            )
+            port map(
+                clk    => clk,
+                rst    => rst,
+                en     => mac_en_in_reg(i),
+                load_w => load_w_reg,
+                w_in   => w_in,
+                start  => mac_new_input_start_reg(i),
+                x_in   => mac_x_in_reg((i+1)*INPUT_DATA_RADIX-1 downto i*INPUT_DATA_RADIX),
+                y_in   => y_in((i+1)*INPUT_DATA_RADIX-1 downto i*INPUT_DATA_RADIX),
+                x_out  => open,
+                y_out  => mac_y_internal((i+1)*INPUT_DATA_RADIX-1 downto i*INPUT_DATA_RADIX),
+                en_out => open
+            );
+    end generate;
+
+end architecture;

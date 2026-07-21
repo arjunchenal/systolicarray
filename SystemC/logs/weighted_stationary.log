@@ -1,0 +1,70 @@
+
+        SystemC 3.0.1-Accellera --- Mar  2 2025 23:51:21
+        Copyright (c) 1996-2024 by all Contributors,
+        ALL RIGHTS RESERVED
+
+Info: (I703) tracing timescale unit set: 1 ns (trace_weightstationary.vcd)
+Matrix A: 
+
+Generated matrix:
+10 11 12 13 
+weights rows: 3, cols[0]: 4
+The weight matrix is : 
+1 0 2 0 
+5 4 3 6 
+7 0 8 9 
+
+The input matrix is : 
+input_index rows: 3, cols[0]: 4
+0 1 2 3 
+0 1 2 3 
+0 1 2 3 
+
+The groups are : 
+0 1 2 3 
+0 1 2 3 
+0 1 2 3 
+0 1 2 3 
+the data is : 10
+the data is : 11
+the data is : 12
+the data is : 13
+The value of H is :L 3
+The value of G is :L 3
+the data B is : 1
+the data B is : 0
+the data B is : 2
+the data B is : 5
+the data B is : 4
+the data B is : 3
+the data B is : 7
+the data B is : 0
+the data B is : 8
+[SRAM] WRITE: mem[0][0] = 10
+[SRAM] WRITE: mem[0][0] = 1
+[SRAM] WRITE: mem[0][0] = 0
+[SRAM] WRITE: mem[1][0] = 11
+[SRAM] WRITE: mem[0][1] = 0
+[SRAM] WRITE: mem[0][1] = 1
+[SRAM] WRITE: mem[2][0] = 12
+[SRAM] WRITE: mem[0][2] = 2
+[SRAM] WRITE: mem[0][2] = 2
+[SRAM] WRITE: mem[1][0] = 5
+[SRAM] WRITE: mem[1][0] = 0
+[SRAM] WRITE: mem[1][1] = 4
+[SRAM] WRITE: mem[1][1] = 1
+[SRAM] WRITE: mem[1][2] = 3
+[SRAM] WRITE: mem[1][2] = 2
+[SRAM] WRITE: mem[2][0] = 7
+[SRAM] WRITE: mem[2][0] = 0
+[SRAM] WRITE: mem[2][1] = 0
+[SRAM] WRITE: mem[2][1] = 1
+[SRAM] WRITE: mem[2][2] = 8
+[SRAM] WRITE: mem[2][2] = 2
+[DBG] colsB_eff=3
+[DBG] group 0 size=4 lanes: -1 -1 -1 -1
+[DBG] group 1 size=4 lanes: -1 -1 -1 -1
+[DBG] group 2 size=4 lanes: -1 -1 -1 -1
+[SRAM] WRITE: mem[0][0] = 10
+[SRAM] WRITE: mem[1][0] = 11
+[SRAM] WRITE: mem[2][0] = 12
