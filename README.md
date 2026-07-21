@@ -1,4 +1,3 @@
-
 # Compression-Aware Hybrid MAC Architecture for Energy-Area-Delay optimization in the Systolic Arrays
 
 ## Overview
